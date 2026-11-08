@@ -5,16 +5,27 @@ from inspect_firmware import FirmwareFormatError, TRAILER_SIZE, parse_firmware
 
 
 def fixture(
-    feature_payload: bytes,
+    feature_payload: bytes | None,
     *,
     outer_length_delta: int = 0,
     outer_pad: int = 0,
     include_outer_padding: bool = True,
     tlv_length_delta: int = 0,
+    tlv_pad: int = 0,
+    include_tlv_padding: bool = True,
+    extra_tlvs: tuple[bytes, ...] = (),
 ) -> bytes:
     region_data_length = 64
-    tlv = struct.pack("<HBB", len(feature_payload) + tlv_length_delta, 0, 4) + feature_payload
-    outer_payload = tlv
+    tlvs = []
+    if feature_payload is not None:
+        feature_tlv = struct.pack(
+            "<HBB", len(feature_payload) + tlv_length_delta, tlv_pad, 4
+        ) + feature_payload
+        if include_tlv_padding:
+            feature_tlv += bytes(tlv_pad)
+        tlvs.append(feature_tlv)
+    tlvs.extend(extra_tlvs)
+    outer_payload = b"".join(tlvs)
     outer = struct.pack("<HBB", len(outer_payload) + outer_length_delta, outer_pad, 0) + outer_payload
     if include_outer_padding:
         outer += bytes(outer_pad)
@@ -83,6 +94,38 @@ class FirmwareParserTests(unittest.TestCase):
         struct.pack_into("<I", data, region_offset + 20, region_offset)
         with self.assertRaises(FirmwareFormatError):
             parse_firmware(bytes(data))
+
+
+    def test_rejects_feature_payload_shorter_than_common_structure(self):
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(fixture(b"\\x80\\x00"))
+
+    def test_rejects_missing_feature_tlv(self):
+        unknown = struct.pack("<HBB", 3, 0, 1) + b"abc"
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(fixture(None, extra_tlvs=(unknown,)))
+
+    def test_rejects_duplicate_feature_tlvs(self):
+        payload = bytes([0x02, 0xC0]) + bytes(14)
+        duplicate = struct.pack("<HBB", len(payload), 0, 4) + payload
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(fixture(payload, extra_tlvs=(duplicate,)))
+
+    def test_rejects_truncated_tlv_header(self):
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(fixture(None, extra_tlvs=(b"\\x01\\x00",)))
+
+    def test_rejects_tlv_padding_past_outer_boundary(self):
+        payload = bytes([0x02, 0xC0]) + bytes(14)
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(fixture(payload, tlv_pad=2, include_tlv_padding=False))
+
+    def test_accepts_bounded_tlv_padding_and_unknown_tlv(self):
+        payload = bytes([0x02, 0xC0]) + bytes(14)
+        unknown = struct.pack("<HBB", 3, 0, 1) + b"abc"
+        report = parse_firmware(fixture(payload, tlv_pad=2, extra_tlvs=(unknown,)))
+        self.assertEqual([item["tag"] for item in report["tlvs"]], [4, 1])
+        self.assertTrue(report["tlvs"][0]["cnm_bit_7"])
 
     def test_rejects_truncated_firmware(self):
         with self.assertRaises(FirmwareFormatError):
