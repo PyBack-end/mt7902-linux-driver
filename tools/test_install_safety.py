@@ -15,6 +15,14 @@ class InstallSafetyTests(unittest.TestCase):
         self.assertIn('INSTALL MT7902E MODULE FILES', MAKEFILE)
         self.assertIn('/updates/dkms', MAKEFILE)
 
+    def test_module_install_authorizes_before_building(self):
+        self.assertNotIn("install: all", MAKEFILE)
+        install_recipe = MAKEFILE.split("\\ninstall:", 1)[1].split("\\ninstall_fw:", 1)[0]
+        self.assertLess(
+            install_recipe.index("Confirmation did not match."),
+            install_recipe.index("$(MAKE) all"),
+        )
+
     def test_module_install_uses_conflict_preflight(self):
         self.assertIn('tools/check_module_install_conflict.sh', MAKEFILE)
         self.assertTrue(CONFLICT_CHECK.is_file())
