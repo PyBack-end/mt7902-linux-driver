@@ -42,9 +42,10 @@ def parse_firmware(data: bytes) -> dict[str, object]:
         raise FirmwareFormatError("release metadata offset is outside the metadata area")
     outer_length, outer_pad, outer_tag = struct.unpack_from("<HBB", data, metadata_offset)
     outer_start = metadata_offset + 4
-    outer_end = outer_start + outer_length + outer_pad
-    if outer_end > region_offset or outer_end < outer_start:
-        raise FirmwareFormatError("outer release-info length exceeds metadata boundary")
+    outer_end = outer_start + outer_length
+    outer_padded_end = outer_end + outer_pad
+    if outer_end < outer_start or outer_padded_end > region_offset:
+        raise FirmwareFormatError("outer release-info length or padding exceeds metadata boundary")
     tlvs = []
     cursor = outer_start
     while cursor < outer_end:
