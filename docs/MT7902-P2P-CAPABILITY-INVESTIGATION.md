@@ -42,8 +42,10 @@ so that capability conclusions remain tied to an exact firmware image.
   interface-combination table on MT792x_FW_CAP_CNM.
 - A comparison against the current actively maintained `morrownr/mt76` source
   found a firmware-name-specific runtime CNM override for MT7927, but no
-  equivalent MT7902 override. This is not proof that MT7902 cannot support CNM;
-  it is evidence that the maintained driver does not currently assert it.
+  equivalent MT7902 override. The official MT7902 enablement series adds device,
+  DMA, MCU and firmware support but does not add an MT7902 CNM override or document
+  the 36-byte feature-TLV extension. This is not proof that MT7902 cannot support
+  CNM; it is evidence that upstream has not asserted that capability.
 - The inspected MT7902 RAM firmware has a 36-byte feature TLV, with segment
   0x80 and data 0x00. Its CNM bit is therefore not set by the current parser.
 - MT7922, MT7961 and MT7925 comparison firmware inspected during this work
