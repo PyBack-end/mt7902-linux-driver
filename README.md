@@ -69,3 +69,11 @@ Once you got the driver & firmware installed, reboot to see changes.
 ## Feedback
 
 If you have any issue using this driver, please provide feedback in this [Discord group](https://discord.gg/JGhjAxEFhz).
+
+
+## Development notes
+
+- [MT7902 P2P capability investigation](docs/MT7902-P2P-CAPABILITY-INVESTIGATION.md)
+- [Firmware metadata inspector](tools/inspect_firmware.py)
+
+The upstream snapshot used by this repository is archived. Review the investigation document before using this source as a long-term driver fallback. Do not force CNM capability based only on firmware metadata or another chipset's behaviour.
