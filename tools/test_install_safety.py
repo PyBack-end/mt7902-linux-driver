@@ -1,9 +1,12 @@
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 MAKEFILE = (ROOT / "Makefile").read_text()
+CONFLICT_CHECK = ROOT / "tools" / "check_module_install_conflict.sh"
 
 
 class InstallSafetyTests(unittest.TestCase):
@@ -12,9 +15,43 @@ class InstallSafetyTests(unittest.TestCase):
         self.assertIn('INSTALL MT7902E MODULE FILES', MAKEFILE)
         self.assertIn('/updates/dkms', MAKEFILE)
 
-    def test_module_install_refuses_to_shadow_any_existing_module(self):
-        self.assertIn('find "/lib/modules/$(KVER)"', MAKEFILE)
-        self.assertIn('refusing to shadow or replace it', MAKEFILE)
+    def test_module_install_uses_conflict_preflight(self):
+        self.assertIn('tools/check_module_install_conflict.sh', MAKEFILE)
+        self.assertTrue(CONFLICT_CHECK.is_file())
+
+    def test_conflict_preflight_accepts_empty_module_tree(self):
+        with tempfile.TemporaryDirectory() as root:
+            result = subprocess.run(
+                ["sh", str(CONFLICT_CHECK), "test-kernel", "mt7902e", root],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_conflict_preflight_rejects_existing_module_variants(self):
+        for suffix in (".ko", ".ko.gz", ".ko.xz", ".ko.zst"):
+            with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as root:
+                module = Path(root) / "kernel" / "drivers" / "mt7902e" / ("mt7902e" + suffix)
+                module.parent.mkdir(parents=True)
+                module.write_bytes(b"existing module")
+                result = subprocess.run(
+                    ["sh", str(CONFLICT_CHECK), "test-kernel", "mt7902e", root],
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("refusing to shadow or replace it", result.stderr)
+
+    def test_conflict_preflight_rejects_symlinked_module(self):
+        with tempfile.TemporaryDirectory() as root:
+            module = Path(root) / "updates" / "dkms" / "mt7902e.ko"
+            module.parent.mkdir(parents=True)
+            target = Path(root) / "outside-module"
+            target.write_bytes(b"existing module")
+            module.symlink_to(target)
+            result = subprocess.run(
+                ["sh", str(CONFLICT_CHECK), "test-kernel", "mt7902e", root],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
 
     def test_firmware_install_and_removal_are_separately_guarded(self):
         self.assertIn('ALLOW_FIRMWARE_INSTALL', MAKEFILE)
