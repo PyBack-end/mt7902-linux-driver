@@ -22,10 +22,19 @@ class InstallSafetyTests(unittest.TestCase):
     def test_conflict_preflight_accepts_empty_module_tree(self):
         with tempfile.TemporaryDirectory() as root:
             result = subprocess.run(
-                ["sh", str(CONFLICT_CHECK), "test-kernel", "mt7902e", root],
+                ["sh", str(CONFLICT_CHECK), "7.0.0-test", "mt7902e", root],
                 capture_output=True, text=True, check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_conflict_preflight_refuses_mainline_supported_kernels(self):
+        with tempfile.TemporaryDirectory() as root:
+            result = subprocess.run(
+                ["sh", str(CONFLICT_CHECK), "7.1.0-generic", "mt7902e", root],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("upstream MT7902 support", result.stderr)
 
     def test_conflict_preflight_rejects_existing_module_variants(self):
         for suffix in (".ko", ".ko.gz", ".ko.xz", ".ko.zst"):
@@ -34,7 +43,7 @@ class InstallSafetyTests(unittest.TestCase):
                 module.parent.mkdir(parents=True)
                 module.write_bytes(b"existing module")
                 result = subprocess.run(
-                    ["sh", str(CONFLICT_CHECK), "test-kernel", "mt7902e", root],
+                    ["sh", str(CONFLICT_CHECK), "7.0.0-test", "mt7902e", root],
                     capture_output=True, text=True, check=False,
                 )
                 self.assertNotEqual(result.returncode, 0)
@@ -48,7 +57,7 @@ class InstallSafetyTests(unittest.TestCase):
             target.write_bytes(b"existing module")
             module.symlink_to(target)
             result = subprocess.run(
-                ["sh", str(CONFLICT_CHECK), "test-kernel", "mt7902e", root],
+                ["sh", str(CONFLICT_CHECK), "7.0.0-test", "mt7902e", root],
                 capture_output=True, text=True, check=False,
             )
             self.assertNotEqual(result.returncode, 0)
