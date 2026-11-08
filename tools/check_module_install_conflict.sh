@@ -38,6 +38,20 @@ if [ ! -d "$module_root" ]; then
 	exit 1
 fi
 
+if [ -f "$module_root/modules.alias" ] &&
+	grep -Eiq '^alias pci:v000014C3d00007902.*[[:space:]]mt7921e"$(find "$module_root" \( -type f -o -type l \) \( -name "$module_name.ko" -o -name "$module_name.ko.gz" -o -name "$module_name.ko.xz" -o -name "$module_name.ko.zst" \) -print -quit 2>/dev/null || true)"
+
+if [ -n "$existing_module" ]; then
+	echo "An existing $module_name module was found at $existing_module; refusing to shadow or replace it." >&2
+	exit 1
+fi
+
+exit 0
+ "$module_root/modules.alias"; then
+	echo "The selected kernel already has an MT7902 PCI alias in mt7921e; refusing to install a competing driver." >&2
+	exit 1
+fi
+
 existing_module="$(find "$module_root" \( -type f -o -type l \) \( -name "$module_name.ko" -o -name "$module_name.ko.gz" -o -name "$module_name.ko.xz" -o -name "$module_name.ko.zst" \) -print -quit 2>/dev/null || true)"
 
 if [ -n "$existing_module" ]; then
