@@ -16,14 +16,12 @@ else
 DEPMOD_ARGS =
 endif
 
-ifneq ("","$(wildcard $(MT76DIR)/*.ko.gz)")
-COMPRESS_GZIP := y
-endif
-ifneq ("","$(wildcard $(MT76DIR)/*.ko.xz)")
-COMPRESS_XZ := y
-endif
 ifneq ("","$(wildcard $(MT76DIR)/*.ko.zst)")
 COMPRESS_ZSTD := y
+else ifneq ("","$(wildcard $(MT76DIR)/*.ko.xz)")
+COMPRESS_XZ := y
+else ifneq ("","$(wildcard $(MT76DIR)/*.ko.gz)")
+COMPRESS_GZIP := y
 endif
 
 export COMPRESS_GZIP COMPRESS_XZ COMPRESS_ZSTD
