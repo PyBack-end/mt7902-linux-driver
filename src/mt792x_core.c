@@ -720,50 +720,88 @@ mt792x_get_offload_capability(struct device *dev, const char *fw_wm)
 	const struct mt76_connac2_fw_trailer *hdr;
 	struct mt792x_realease_info *rel_info;
 	const struct firmware *fw;
-	int ret, i, offset = 0;
 	const u8 *data, *end;
+	size_t offset = 0, region_offset;
+	int ret, i;
 	u8 offload_caps = 0;
 
 	ret = request_firmware(&fw, fw_wm, dev);
-	if (ret)
-		return ret;
+	if (ret) {
+		dev_err(dev, "Failed to request firmware %s: %d\n", fw_wm, ret);
+		return 0;
+	}
 
 	if (!fw || !fw->data || fw->size < sizeof(*hdr)) {
-		dev_err(dev, "Invalid firmware\n");
+		dev_err(dev, "Invalid firmware %s\n", fw_wm);
 		goto out;
 	}
 
-	data = fw->data;
 	hdr = (const void *)(fw->data + fw->size - sizeof(*hdr));
+	if (hdr->n_region >
+	    (fw->size - sizeof(*hdr)) / sizeof(struct mt76_connac2_fw_region))
+		goto invalid;
+
+	region_offset = fw->size - sizeof(*hdr) -
+		hdr->n_region * sizeof(struct mt76_connac2_fw_region);
 
 	for (i = 0; i < hdr->n_region; i++) {
 		const struct mt76_connac2_fw_region *region;
+		size_t region_len;
 
-		region = (const void *)((const u8 *)hdr -
-					(hdr->n_region - i) * sizeof(*region));
-		offset += le32_to_cpu(region->len);
+		region = (const void *)(fw->data + region_offset +
+					i * sizeof(*region));
+		region_len = le32_to_cpu(region->len);
+		if (region_len > region_offset - offset)
+			goto invalid;
+
+		offset += region_len;
 	}
 
-	data += offset + 16;
+	if (offset > region_offset || region_offset - offset < 16)
+		goto invalid;
+
+	data = fw->data + offset + 16;
+	end = fw->data + region_offset;
+	if (end - data < sizeof(*rel_info))
+		goto invalid;
+
 	rel_info = (struct mt792x_realease_info *)data;
 	data += sizeof(*rel_info);
-	end = data + le16_to_cpu(rel_info->len);
+	if (le16_to_cpu(rel_info->len) > end - data)
+		goto invalid;
 
+	end = data + le16_to_cpu(rel_info->len);
 	while (data < end) {
+		size_t tlv_len;
+
+		if (end - data < sizeof(*rel_info))
+			goto invalid;
+
 		rel_info = (struct mt792x_realease_info *)data;
 		data += sizeof(*rel_info);
+		tlv_len = le16_to_cpu(rel_info->len);
+		if (tlv_len > end - data ||
+		    rel_info->pad_len > end - data - tlv_len)
+			goto invalid;
 
 		if (rel_info->tag == MT792x_FW_TAG_FEATURE) {
 			struct mt792x_fw_features *features;
+
+			if (tlv_len < sizeof(*features))
+				goto invalid;
 
 			features = (struct mt792x_fw_features *)data;
 			offload_caps = features->data;
 			break;
 		}
 
-		data += le16_to_cpu(rel_info->len) + rel_info->pad_len;
+		data += tlv_len + rel_info->pad_len;
 	}
 
+	goto out;
+
+invalid:
+	dev_err(dev, "Invalid firmware capability metadata in %s\n", fw_wm);
 out:
 	release_firmware(fw);
 
