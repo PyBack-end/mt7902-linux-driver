@@ -16,14 +16,14 @@ case "$module_name" in
 	""|*[!A-Za-z0-9_-]*) echo "invalid module name" >&2; exit 2 ;;
 esac
 
-version_prefix=\${kernel_version%%-*}
+version_prefix=${kernel_version%%-*}
 case "$version_prefix" in
 	*.*) ;;
 	*) echo "invalid kernel version" >&2; exit 2 ;;
 esac
-major=\${version_prefix%%.*}
-version_rest=\${version_prefix#*.}
-minor=\${version_rest%%.*}
+major=${version_prefix%%.*}
+version_rest=${version_prefix#*.}
+minor=${version_rest%%.*}
 case "$major:$minor" in
 	*[!0-9:]*|:*) echo "invalid kernel version" >&2; exit 2 ;;
 esac
@@ -32,7 +32,7 @@ if [ "$major" -gt 7 ] || { [ "$major" -eq 7 ] && [ "$minor" -ge 1 ]; }; then
 	exit 1
 fi
 
-module_root="\${3:-/lib/modules/$kernel_version}"
+module_root="${3:-/lib/modules/$kernel_version}"
 if [ ! -d "$module_root" ]; then
 	echo "kernel module directory does not exist: $module_root" >&2
 	exit 1
