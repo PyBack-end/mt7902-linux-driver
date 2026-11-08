@@ -34,6 +34,15 @@ installation policy.
 - MT7922, MT7961 and MT7925 comparison firmware inspected during this work
   use 16-byte feature TLVs and set the CNM bit.
 
+## Host-side ROC implementation
+
+The MT7902 tree inherits the MT7921 mac80211 ROC callbacks from `mt7902/main.c`.
+Its MCU layer contains ROC acquire/abort request construction using
+`MCU_UNI_CMD(ROC)` and handles `MCU_UNI_EVENT_ROC` grants. The shared core still
+removes the callbacks when CNM is absent. This establishes that host-side command
+plumbing exists; it does not establish that MT7902 firmware accepts the command,
+returns a grant, or safely supports the channel-context lifecycle.
+
 ## Hypotheses that remain unproven
 
 1. The MT7902 feature TLV may contain a chipset-specific extension after the
