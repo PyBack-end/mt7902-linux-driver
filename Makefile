@@ -52,7 +52,7 @@ install: all
 	@test "$(ALLOW_SYSTEM_INSTALL)" = "1" || { echo "Refusing system modification; set ALLOW_SYSTEM_INSTALL=1 explicitly."; exit 1; }
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
 	@test ! -e "$(INSTALL_MARKER)" || { echo "A manual install marker already exists; inspect it before proceeding."; exit 1; }
-	@test -z "$(find "$(MODDESTDIR)" -maxdepth 1 -type f -name "$(MODNAME).ko*" -print -quit 2>/dev/null)" || { echo "A module already exists in $(MODDESTDIR); refusing to overwrite it."; exit 1; }
+	@test -z "$$(find "$(MODDESTDIR)" -maxdepth 1 -type f -name "$(MODNAME).ko*" -print -quit 2>/dev/null)" || { echo "A module already exists in $(MODDESTDIR); refusing to overwrite it."; exit 1; }
 	@printf "Type INSTALL MT7902E MODULE FILES to continue: "; read -r answer; test "$$answer" = "INSTALL MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
 	@install -vDm 644 -t "$(MODDESTDIR)" *.ko
 ifeq ($(COMPRESS_GZIP), y)
@@ -65,10 +65,10 @@ ifeq ($(COMPRESS_ZSTD), y)
 	@zstd -f -q --rm "$(MODDESTDIR)"/*.ko
 endif
 	@install -d -m 755 /var/lib
-	@module_file=$(find "$(MODDESTDIR)" -maxdepth 1 -type f -name "$(MODNAME).ko*" -print -quit); \
-		test -n "$module_file" || { echo "Installed module file was not found."; exit 1; }; \
-		module_hash=$(sha256sum "$module_file" | awk '{print $1}'); \
-		printf '%s %s\n' "$(basename "$module_file")" "$module_hash" > "$(INSTALL_MARKER)"
+	@module_file=$$(find "$(MODDESTDIR)" -maxdepth 1 -type f -name "$(MODNAME).ko*" -print -quit); \
+		test -n "$$module_file" || { echo "Installed module file was not found."; exit 1; }; \
+		module_hash=$$(sha256sum "$$module_file" | awk '{print $$1}'); \
+		printf '%s %s\n' "$$(basename "$$module_file")" "$$module_hash" > "$(INSTALL_MARKER)"
 	@depmod $(DEPMOD_ARGS) -a $(KVER)
 	@echo "Module files installed. The running driver was NOT changed; reboot or a separately authorized activation is required."
 
@@ -88,7 +88,7 @@ install_fw:
 	@install -vDm 644 -t "$(FWDIR)" firmware/*.bin
 	@install -d -m 755 /var/lib
 	@for name in WIFI_MT7902_patch_mcu_1_1_hdr.bin WIFI_RAM_CODE_MT7902_1.bin; do \
-		sha256sum "$(FWDIR)/$name"; \
+		sha256sum "$(FWDIR)/$$name" | awk -v name="$$name" '{print $$1, name}'; \
 	done > "$(FIRMWARE_MANIFEST)"
 
 uninstall:
@@ -97,11 +97,11 @@ uninstall:
 	@test -f "$(INSTALL_MARKER)" || { echo "No manual-install marker found; refusing to remove untracked module files."; exit 1; }
 	@printf "Type REMOVE MT7902E MODULE FILES to continue: "; read -r answer; test "$$answer" = "REMOVE MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
 	@read -r module_file expected_hash < "$(INSTALL_MARKER)"; \
-		case "$module_file" in "$(MODNAME).ko"|"$(MODNAME).ko.gz"|"$(MODNAME).ko.xz"|"$(MODNAME).ko.zst") ;; *) echo "Invalid install marker; refusing removal."; exit 1 ;; esac; \
-		test -f "$(MODDESTDIR)/$module_file" || { echo "Installed module file is missing; refusing removal."; exit 1; }; \
-		actual_hash=$(sha256sum "$(MODDESTDIR)/$module_file" | awk '{print $1}'); \
-		test "$actual_hash" = "$expected_hash" || { echo "Module file changed since installation; refusing removal."; exit 1; }; \
-		rm -f "$(MODDESTDIR)/$module_file"; \
+		case "$$module_file" in "$(MODNAME).ko"|"$(MODNAME).ko.gz"|"$(MODNAME).ko.xz"|"$(MODNAME).ko.zst") ;; *) echo "Invalid install marker; refusing removal."; exit 1 ;; esac; \
+		test -f "$(MODDESTDIR)/$$module_file" || { echo "Installed module file is missing; refusing removal."; exit 1; }; \
+		actual_hash=$$(sha256sum "$(MODDESTDIR)/$$module_file" | awk '{print $$1}'); \
+		test "$$actual_hash" = "$$expected_hash" || { echo "Module file changed since installation; refusing removal."; exit 1; }; \
+		rm -f "$(MODDESTDIR)/$$module_file"; \
 		rmdir "$(MODDESTDIR)" 2>/dev/null || true; \
 		rm -f "$(INSTALL_MARKER)"
 	@depmod $(DEPMOD_ARGS) -a $(KVER)
@@ -113,13 +113,13 @@ uninstall_fw:
 	@test -f "$(FIRMWARE_MANIFEST)" || { echo "No firmware manifest found; refusing to remove distribution or untracked firmware."; exit 1; }
 	@printf "Type REMOVE MT7902 FIRMWARE to continue: "; read -r answer; test "$$answer" = "REMOVE MT7902 FIRMWARE" || { echo "Confirmation did not match."; exit 1; }
 	@while read -r expected_hash name; do \
-		case "$name" in \
+		case "$$name" in \
 			WIFI_MT7902_patch_mcu_1_1_hdr.bin|WIFI_RAM_CODE_MT7902_1.bin) ;; \
-			*) echo "Unexpected firmware manifest entry: $name"; exit 1 ;; \
+			*) echo "Unexpected firmware manifest entry: $$name"; exit 1 ;; \
 		esac; \
-		test -f "$(FWDIR)/$name" || { echo "Tracked firmware file is missing: $name"; exit 1; }; \
-		actual_hash=$(sha256sum "$(FWDIR)/$name" | awk '{print $1}'); \
-		test "$actual_hash" = "$expected_hash" || { echo "Firmware file changed since installation: $name"; exit 1; }; \
+		test -f "$(FWDIR)/$$name" || { echo "Tracked firmware file is missing: $$name"; exit 1; }; \
+		actual_hash=$$(sha256sum "$(FWDIR)/$$name" | awk '{print $$1}'); \
+		test "$$actual_hash" = "$$expected_hash" || { echo "Firmware file changed since installation: $$name"; exit 1; }; \
 	done < "$(FIRMWARE_MANIFEST)"
-	@while read -r expected_hash name; do rm -f "$(FWDIR)/$name"; done < "$(FIRMWARE_MANIFEST)"
+	@while read -r expected_hash name; do rm -f "$(FWDIR)/$$name"; done < "$(FIRMWARE_MANIFEST)"
 	@rm -f "$(FIRMWARE_MANIFEST)"
