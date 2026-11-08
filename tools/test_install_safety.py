@@ -12,6 +12,10 @@ class InstallSafetyTests(unittest.TestCase):
         self.assertIn('INSTALL MT7902E MODULE FILES', MAKEFILE)
         self.assertIn('/updates/dkms', MAKEFILE)
 
+    def test_module_install_refuses_to_shadow_any_existing_module(self):
+        self.assertIn('find "/lib/modules/$(KVER)"', MAKEFILE)
+        self.assertIn('refusing to shadow or replace it', MAKEFILE)
+
     def test_firmware_install_and_removal_are_separately_guarded(self):
         self.assertIn('ALLOW_FIRMWARE_INSTALL', MAKEFILE)
         self.assertIn('ALLOW_FIRMWARE_REMOVAL', MAKEFILE)
