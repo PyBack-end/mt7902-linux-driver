@@ -77,6 +77,7 @@ install_fw:
 	@test "$(ALLOW_FIRMWARE_INSTALL)" = "1" || { echo "Refusing firmware installation; set ALLOW_FIRMWARE_INSTALL=1 explicitly."; exit 1; }
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
 	@test ! -e "$(FIRMWARE_MANIFEST)" && test ! -L "$(FIRMWARE_MANIFEST)" || { echo "Firmware manifest already exists; inspect it before proceeding."; exit 1; }
+	@sh tools/check_module_install_conflict.sh "$(KVER)" "$(MODNAME)"
 	@test ! -e "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin" && test ! -L "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin" && \
 		test ! -e "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.zst" && test ! -L "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.zst" && \
 		test ! -e "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.xz" && test ! -L "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.xz" && \
