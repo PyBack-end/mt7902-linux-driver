@@ -52,9 +52,11 @@ install: all
 	@test "$(ALLOW_SYSTEM_INSTALL)" = "1" || { echo "Refusing system modification; set ALLOW_SYSTEM_INSTALL=1 explicitly."; exit 1; }
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
 	@test ! -e "$(INSTALL_MARKER)" && test ! -L "$(INSTALL_MARKER)" || { echo "A manual install marker already exists; inspect it before proceeding."; exit 1; }
-	@for module_file in "$(MODDESTDIR)/$(MODNAME).ko" "$(MODDESTDIR)/$(MODNAME).ko.gz" "$(MODDESTDIR)/$(MODNAME).ko.xz" "$(MODDESTDIR)/$(MODNAME).ko.zst"; do \
-		if [ -e "$module_file" ] || [ -L "$module_file" ]; then echo "A module already exists: $module_file"; exit 1; fi; \
-	done
+	@test ! -e "$(MODDESTDIR)/$(MODNAME).ko" && test ! -L "$(MODDESTDIR)/$(MODNAME).ko" && \
+		test ! -e "$(MODDESTDIR)/$(MODNAME).ko.gz" && test ! -L "$(MODDESTDIR)/$(MODNAME).ko.gz" && \
+		test ! -e "$(MODDESTDIR)/$(MODNAME).ko.xz" && test ! -L "$(MODDESTDIR)/$(MODNAME).ko.xz" && \
+		test ! -e "$(MODDESTDIR)/$(MODNAME).ko.zst" && test ! -L "$(MODDESTDIR)/$(MODNAME).ko.zst" || \
+		{ echo "A module already exists in $(MODDESTDIR); refusing to overwrite it."; exit 1; }
 	@printf "Type INSTALL MT7902E MODULE FILES to continue: "; read -r answer; test "$$answer" = "INSTALL MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
 	@install -vDm 644 -t "$(MODDESTDIR)" *.ko
 ifeq ($(COMPRESS_GZIP), y)
