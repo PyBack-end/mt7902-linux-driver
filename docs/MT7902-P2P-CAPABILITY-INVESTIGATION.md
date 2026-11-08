@@ -1,0 +1,63 @@
+# MT7902 P2P capability investigation
+
+## Scope
+
+This work investigates why the MT7902 driver advertises P2P interface types but
+does not expose the full P2P interface-combination and remain-on-channel path
+when the firmware capability parser does not report CNM.
+
+## Confirmed source-level behaviour
+
+- The shared MT792x firmware feature structure is 16 bytes: segment, data, and
+  14 reserved bytes.
+- The parser extracts the offload capability byte from the feature TLV data.
+- The shared core gates remain-on-channel callbacks and the channel-context
+  interface-combination table on MT792x_FW_CAP_CNM.
+- The inspected MT7902 RAM firmware has a 36-byte feature TLV, with segment
+  0x80 and data 0x00. Its CNM bit is therefore not set by the current parser.
+- MT7922, MT7961 and MT7925 comparison firmware inspected during this work
+  use 16-byte feature TLVs and set the CNM bit.
+
+## Hypotheses that remain unproven
+
+1. The MT7902 feature TLV may contain a chipset-specific extension after the
+   common 16-byte feature structure.
+2. Segment 0x80 may describe a different firmware capability layout or segment
+   selection; its meaning must be confirmed from firmware format definitions
+   or controlled firmware/driver traces.
+3. MT7902 may not implement the complete CNM command set even if the metadata
+   could be interpreted to indicate support.
+4. The lack of CNM may be intentional firmware policy rather than a parser bug.
+
+## Required evidence before changing runtime capability behaviour
+
+- Identify the meaning of all 36 bytes in the MT7902 feature TLV.
+- Trace the exact MCU commands used by CNM, channel contexts and ROC.
+- Compare MT7902 command/event handling with supported Connac2 chipsets.
+- Confirm firmware responses and error codes for each command.
+- Verify mac80211 callbacks and interface combinations against the actual
+  firmware command support.
+- Add parser fixtures for all known firmware layouts.
+- Keep firmware parsing hardening independent from any CNM override.
+
+## Non-goals
+
+- Do not unconditionally set MT792x_FW_CAP_CNM for MT7902.
+- Do not advertise P2P concurrency based only on interface mode bits.
+- Do not change firmware blobs or install a module as part of investigation.
+- Do not use a different chipset's firmware as a substitute.
+
+## Existing parser hardening
+
+The firmware bounds-validation work remains isolated in PR #1. It should be
+reviewed and merged independently of capability-behaviour changes.
+
+## Acceptance levels
+
+1. Static: parser and command-path code reviewed.
+2. Build: driver compiles against target kernel headers.
+3. Runtime: firmware loads and device remains stable.
+4. Capability: P2P discovery and ROC operations succeed.
+5. Integration: Turyen forms a group and transfers authenticated data.
+
+Passing a lower level does not imply passing a higher one.
