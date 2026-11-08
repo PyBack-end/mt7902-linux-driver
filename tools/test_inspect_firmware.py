@@ -14,8 +14,9 @@ def fixture(
     tlv_pad: int = 0,
     include_tlv_padding: bool = True,
     extra_tlvs: tuple[bytes, ...] = (),
+    region_lengths: tuple[int, ...] = (64,),
 ) -> bytes:
-    region_data_length = 64
+    region_data_length = sum(region_lengths)
     tlvs = []
     if feature_payload is not None:
         feature_tlv = struct.pack(
@@ -29,13 +30,14 @@ def fixture(
     outer = struct.pack("<HBB", len(outer_payload) + outer_length_delta, outer_pad, 0) + outer_payload
     if include_outer_padding:
         outer += bytes(outer_pad)
-    descriptor = bytearray(40)
-    struct.pack_into("<I", descriptor, 20, region_data_length)
+    descriptors = bytearray(40 * len(region_lengths))
+    for index, region_length in enumerate(region_lengths):
+        struct.pack_into("<I", descriptors, index * 40 + 20, region_length)
     trailer = struct.pack(
         "<BBBBB2s10s15sI",
-        0x13, 0, 1, 0, 0, b"\0\0", b"TEST000001", b"20261108120000\0", 0
+        0x13, 0, len(region_lengths), 0, 0, b"\0\0", b"TEST000001", b"20261108120000\0", 0
     )
-    return bytes(region_data_length) + bytes(16) + outer + bytes(descriptor) + trailer
+    return bytes(region_data_length) + bytes(16) + outer + bytes(descriptors) + trailer
 
 
 class FirmwareParserTests(unittest.TestCase):
@@ -49,7 +51,13 @@ class FirmwareParserTests(unittest.TestCase):
         self.assertFalse(feature["cnm_bit_7"])
         self.assertEqual(len(feature["extension_hex"]), 40)
 
-    def test_parses_common_16_byte_feature_payload(self):
+
+    def test_parses_multiple_region_descriptors(self):
+        payload = bytes([0x80, 0x00]) + bytes(14) + bytes(20)
+        report = parse_firmware(fixture(payload, region_lengths=(32, 32)))
+        self.assertEqual(report["region_count"], 2)
+        self.assertEqual(report["region_lengths"], [32, 32])
+\n    def test_parses_common_16_byte_feature_payload(self):
         payload = bytes([0x02, 0xC0]) + bytes(14)
         feature = parse_firmware(fixture(payload))["tlvs"][0]
         self.assertTrue(feature["cnm_bit_7"])
