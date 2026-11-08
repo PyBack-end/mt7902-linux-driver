@@ -781,7 +781,7 @@ mt792x_get_offload_capability(struct device *dev, const char *fw_wm)
 		if (remaining < sizeof(*rel_info))
 			goto invalid;
 
-		rel_info = (struct mt792x_realease_info *)data;
+		rel_info = (const struct mt792x_realease_info *)data;
 		data += sizeof(*rel_info);
 		tlv_len = le16_to_cpu(rel_info->len);
 		remaining = end - data;
@@ -795,7 +795,7 @@ mt792x_get_offload_capability(struct device *dev, const char *fw_wm)
 			if (tlv_len < sizeof(*features))
 				goto invalid;
 
-			features = (struct mt792x_fw_features *)data;
+			features = (const struct mt792x_fw_features *)data;
 			offload_caps = features->data;
 			break;
 		}
