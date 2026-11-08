@@ -42,6 +42,10 @@ if [ -f "$module_root/modules.alias" ] && grep -Eiq '^alias pci:v000014C3d000079
 	echo "The selected kernel already has an MT7902 PCI alias in mt7921e; refusing to install a competing driver." >&2
 	exit 1
 fi
+if [ -f "$module_root/modules.builtin.modinfo" ] && grep -Eiq 'mt7921e\.ko:alias=pci:v000014C3d00007902' "$module_root/modules.builtin.modinfo"; then
+	echo "The selected kernel has built-in MT7902 support in mt7921e; refusing to install a competing driver." >&2
+	exit 1
+fi
 
 existing_module="$(find "$module_root" \( -type f -o -type l \) \( -name "$module_name.ko" -o -name "$module_name.ko.gz" -o -name "$module_name.ko.xz" -o -name "$module_name.ko.zst" \) -print -quit 2>/dev/null || true)"
 
