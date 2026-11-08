@@ -718,7 +718,7 @@ static u8
 mt792x_get_offload_capability(struct device *dev, const char *fw_wm)
 {
 	const struct mt76_connac2_fw_trailer *hdr;
-	struct mt792x_realease_info *rel_info;
+	const struct mt792x_realease_info *rel_info;
 	const struct firmware *fw;
 	const u8 *data, *end;
 	size_t offset = 0, region_offset, remaining;
@@ -790,7 +790,7 @@ mt792x_get_offload_capability(struct device *dev, const char *fw_wm)
 			goto invalid;
 
 		if (rel_info->tag == MT792x_FW_TAG_FEATURE) {
-			struct mt792x_fw_features *features;
+			const struct mt792x_fw_features *features;
 
 			if (tlv_len < sizeof(*features))
 				goto invalid;
