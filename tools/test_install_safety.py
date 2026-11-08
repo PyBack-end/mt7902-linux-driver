@@ -42,7 +42,7 @@ class InstallSafetyTests(unittest.TestCase):
     def test_conflict_preflight_rejects_builtin_mt7921e_alias(self):
         with tempfile.TemporaryDirectory() as root:
             (Path(root) / "modules.builtin.modinfo").write_text(
-                "kernel/drivers/net/wireless/mediatek/mt76/mt7921/mt7921e.ko:alias=pci:v000014C3d00007902sv*sd*bc*sc*i*\\n"
+                "kernel/drivers/net/wireless/mediatek/mt76/mt7921/mt7921e.ko:alias=pci:v000014C3d00007902sv*sd*bc*sc*i*\n"
             )
             result = subprocess.run(
                 ["sh", str(CONFLICT_CHECK), "7.0.0-vendor", "mt7902e", root],
