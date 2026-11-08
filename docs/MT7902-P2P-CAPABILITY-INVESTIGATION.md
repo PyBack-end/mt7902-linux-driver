@@ -6,6 +6,15 @@ This work investigates why the MT7902 driver advertises P2P interface types but
 does not expose the full P2P interface-combination and remain-on-channel path
 when the firmware capability parser does not report CNM.
 
+## Driver source provenance
+
+The original upstream snapshot used for this repository is archived. Before
+using it as a long-term fallback, compare it with the actively maintained
+[ morrownr/mt76 project ](https://github.com/morrownr/mt76), which lists MT7902
+support and newer kernel coverage. This is a candidate for source review, not
+an automatic replacement: P2P/ROC behaviour must still be verified against the
+actual firmware and target hardware.
+
 ## Confirmed source-level behaviour
 
 - The shared MT792x firmware feature structure is 16 bytes: segment, data, and
