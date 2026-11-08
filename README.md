@@ -46,7 +46,7 @@ make stage KVER="$(uname -r)" KSRC="/lib/modules/$(uname -r)/build"
 
 - Manual module-file installation is guarded and does not activate or reload
   the running driver. It installs only into `updates/dkms`, refuses to
-  overwrite an existing DKMS module, and requires both an explicit make
+  shadow or replace any existing module for the selected kernel, and requires both an explicit make
   variable and an interactive confirmation:
 
 ```bash
