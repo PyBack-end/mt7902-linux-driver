@@ -13,7 +13,10 @@ using it as a long-term fallback, compare it with the actively maintained
 [morrownr/mt76 project](https://github.com/morrownr/mt76), which lists MT7902
 support and newer kernel coverage. This is a candidate for source review, not
 an automatic replacement: P2P/ROC behaviour must still be verified against the
-actual firmware and target hardware.
+actual firmware and target hardware. Its current installer also installs a
+modprobe configuration that blacklists several in-kernel mt76 modules, so it
+must not be invoked as a Turyen per-device fallback without redesigning that
+installation policy.
 
 ## Confirmed source-level behaviour
 
