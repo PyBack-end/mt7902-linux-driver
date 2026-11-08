@@ -82,12 +82,15 @@ install_fw:
 	@test "$(ALLOW_FIRMWARE_INSTALL)" = "1" || { echo "Refusing firmware installation; set ALLOW_FIRMWARE_INSTALL=1 explicitly."; exit 1; }
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
 	@test ! -e "$(FIRMWARE_MANIFEST)" && test ! -L "$(FIRMWARE_MANIFEST)" || { echo "Firmware manifest already exists; inspect it before proceeding."; exit 1; }
-	@for f in firmware/*.bin; do \
-		base=$$(basename "$$f"); \
-		for suffix in "" .zst .xz .gz; do \
-			if [ -e "$(FWDIR)/$base$suffix" ] || [ -L "$(FWDIR)/$base$suffix" ]; then echo "Refusing to overwrite existing firmware: $(FWDIR)/$base$suffix"; exit 1; fi; \
-		done; \
-	done
+	@test ! -e "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin" && test ! -L "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin" && \
+		test ! -e "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.zst" && test ! -L "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.zst" && \
+		test ! -e "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.xz" && test ! -L "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.xz" && \
+		test ! -e "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.gz" && test ! -L "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.gz" && \
+		test ! -e "$(FWDIR)/WIFI_RAM_CODE_MT7902_1.bin" && test ! -L "$(FWDIR)/WIFI_RAM_CODE_MT7902_1.bin" && \
+		test ! -e "$(FWDIR)/WIFI_RAM_CODE_MT7902_1.bin.zst" && test ! -L "$(FWDIR)/WIFI_RAM_CODE_MT7902_1.bin.zst" && \
+		test ! -e "$(FWDIR)/WIFI_RAM_CODE_MT7902_1.bin.xz" && test ! -L "$(FWDIR)/WIFI_RAM_CODE_MT7902_1.bin.xz" && \
+		test ! -e "$(FWDIR)/WIFI_RAM_CODE_MT7902_1.bin.gz" && test ! -L "$(FWDIR)/WIFI_RAM_CODE_MT7902_1.bin.gz" || \
+		{ echo "Refusing to overwrite existing MT7902 firmware or compressed variant."; exit 1; }
 	@printf "Type INSTALL MT7902 FIRMWARE to continue: "; read -r answer; test "$$answer" = "INSTALL MT7902 FIRMWARE" || { echo "Confirmation did not match."; exit 1; }
 	@install -vDm 644 -t "$(FWDIR)" firmware/*.bin
 	@install -d -m 755 /var/lib
