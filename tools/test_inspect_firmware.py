@@ -3,16 +3,29 @@ import unittest
 
 from inspect_firmware import FirmwareFormatError, parse_firmware
 
-def fixture(feature_payload: bytes, *, outer_length_delta: int = 0, tlv_length_delta: int = 0) -> bytes:
+
+def fixture(
+    feature_payload: bytes,
+    *,
+    outer_length_delta: int = 0,
+    outer_pad: int = 0,
+    include_outer_padding: bool = True,
+    tlv_length_delta: int = 0,
+) -> bytes:
     region_data_length = 64
-    metadata_offset = region_data_length + 16
     tlv = struct.pack("<HBB", len(feature_payload) + tlv_length_delta, 0, 4) + feature_payload
     outer_payload = tlv
-    outer = struct.pack("<HBB", len(outer_payload) + outer_length_delta, 0, 0) + outer_payload
+    outer = struct.pack("<HBB", len(outer_payload) + outer_length_delta, outer_pad, 0) + outer_payload
+    if include_outer_padding:
+        outer += bytes(outer_pad)
     descriptor = bytearray(40)
     struct.pack_into("<I", descriptor, 20, region_data_length)
-    trailer = struct.pack("<BBBBB2s10s15sI", 0x13, 0, 1, 0, 0, b"\0\0", b"TEST000001", b"20261108120000\0", 0)
+    trailer = struct.pack(
+        "<BBBBB2s10s15sI",
+        0x13, 0, 1, 0, 0, b"\0\0", b"TEST000001", b"20261108120000\0", 0
+    )
     return bytes(region_data_length) + bytes(16) + outer + bytes(descriptor) + trailer
+
 
 class FirmwareParserTests(unittest.TestCase):
     def test_parses_36_byte_mt7902_feature_payload_without_interpreting_extension(self):
@@ -31,10 +44,20 @@ class FirmwareParserTests(unittest.TestCase):
         self.assertTrue(feature["cnm_bit_7"])
         self.assertEqual(feature["extension_hex"], "")
 
+    def test_accepts_bounded_outer_padding(self):
+        payload = bytes([0x02, 0xC0]) + bytes(14)
+        report = parse_firmware(fixture(payload, outer_pad=2))
+        self.assertEqual(report["outer_release_info"]["pad"], 2)
+
     def test_rejects_outer_length_past_metadata_boundary(self):
         payload = bytes([0x02, 0xC0]) + bytes(14)
         with self.assertRaises(FirmwareFormatError):
             parse_firmware(fixture(payload, outer_length_delta=1000))
+
+    def test_rejects_outer_padding_past_metadata_boundary(self):
+        payload = bytes([0x02, 0xC0]) + bytes(14)
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(fixture(payload, outer_pad=1000, include_outer_padding=False))
 
     def test_rejects_tlv_payload_past_outer_boundary(self):
         payload = bytes([0x02, 0xC0]) + bytes(14)
@@ -44,6 +67,7 @@ class FirmwareParserTests(unittest.TestCase):
     def test_rejects_truncated_firmware(self):
         with self.assertRaises(FirmwareFormatError):
             parse_firmware(b"short")
+
 
 if __name__ == "__main__":
     unittest.main()
