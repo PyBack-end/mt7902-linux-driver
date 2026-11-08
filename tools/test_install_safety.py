@@ -17,7 +17,7 @@ class InstallSafetyTests(unittest.TestCase):
 
     def test_module_install_authorizes_before_building(self):
         self.assertNotIn("install: all", MAKEFILE)
-        install_recipe = MAKEFILE.split("\\ninstall:", 1)[1].split("\\ninstall_fw:", 1)[0]
+        install_recipe = MAKEFILE.split("\ninstall:", 1)[1].split("\ninstall_fw:", 1)[0]
         self.assertLess(
             install_recipe.index("Confirmation did not match."),
             install_recipe.index("$(MAKE) all"),
