@@ -4,8 +4,11 @@ KSRC ?= $(if $(KERNEL_SRC),$(KERNEL_SRC),/lib/modules/$(KVER)/build)
 FWDIR := /lib/firmware/mediatek
 JOBS ?= $(shell nproc --ignore=1)
 MODNAME := mt7902e
-MODDESTDIR := /lib/modules/$(KVER)/kernel/drivers/net/wireless/mediatek/$(MODNAME)
+MODDESTDIR := /lib/modules/$(KVER)/updates/dkms
 MT76DIR := /lib/modules/$(KVER)/kernel/drivers/net/wireless/mediatek/mt76
+STAGING_DIR ?= $(CURDIR)/build/stage
+INSTALL_MARKER := /var/lib/mt7902e-manual-install
+FIRMWARE_MANIFEST := /var/lib/mt7902e-firmware-files
 
 ifneq ("$(INSTALL_MOD_PATH)", "")
 DEPMOD_ARGS = -b $(INSTALL_MOD_PATH)
@@ -25,8 +28,9 @@ endif
 
 export COMPRESS_GZIP COMPRESS_XZ COMPRESS_ZSTD
 
-# The directory containing the actual source code and kbuild Makefile
 SRC_DIR := $(shell pwd)/src
+
+.PHONY: all clean stage install install_fw uninstall uninstall_fw
 
 all:
 	$(MAKE) -j$(JOBS) -C $(KSRC) M=$(SRC_DIR) modules
@@ -36,43 +40,71 @@ clean:
 	$(MAKE) -j$(JOBS) -C $(KSRC) M=$(SRC_DIR) clean
 	@rm -vf *.ko
 
+# Stage a package tree without changing the host. This is the preferred
+# preparation path for review and packaging.
+stage: all
+	@install -vDm 644 -t "$(STAGING_DIR)/lib/modules/$(KVER)/updates/dkms" *.ko
+	@install -vDm 644 -t "$(STAGING_DIR)/lib/firmware/mediatek" firmware/*.bin
+
+# Manual module-file installation is deliberately separate from module
+# activation. It never unloads, reloads, or modprobes the running driver.
 install: all
-	@install -vDm 644 -t $(MODDESTDIR) *.ko
+	@test "$(ALLOW_SYSTEM_INSTALL)" = "1" || { echo "Refusing system modification; set ALLOW_SYSTEM_INSTALL=1 explicitly."; exit 1; }
+	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
+	@test ! -e "$(INSTALL_MARKER)" || { echo "A manual install marker already exists; inspect it before proceeding."; exit 1; }
+	@printf "Type INSTALL MT7902E MODULE FILES to continue: "; read -r answer; test "$$answer" = "INSTALL MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
+	@install -vDm 644 -t "$(MODDESTDIR)" *.ko
 ifeq ($(COMPRESS_GZIP), y)
-	@gzip -f $(MODDESTDIR)/*.ko
+	@gzip -f "$(MODDESTDIR)"/*.ko
 endif
 ifeq ($(COMPRESS_XZ), y)
-	@xz -f -C crc32 $(MODDESTDIR)/*.ko
+	@xz -f -C crc32 "$(MODDESTDIR)"/*.ko
 endif
 ifeq ($(COMPRESS_ZSTD), y)
-	@zstd -f -q --rm $(MODDESTDIR)/*.ko
+	@zstd -f -q --rm "$(MODDESTDIR)"/*.ko
 endif
+	@install -d -m 755 /var/lib
+	@printf '%s\n' "$(shell git rev-parse HEAD 2>/dev/null || echo unknown)" > "$(INSTALL_MARKER)"
 	@depmod $(DEPMOD_ARGS) -a $(KVER)
+	@echo "Module files installed. The running driver was NOT changed; reboot or a separately authorized activation is required."
 
+# Firmware is never overwritten. Existing distribution firmware must be
+# reviewed and backed up separately before any replacement is considered.
 install_fw:
-ifeq ($(wildcard $(FWDIR)), )
-	@install -vDm 644 -t $(FWDIR) firmware/*.bin
-else
-	@cp -vr firmware tmp
-ifneq ($(wildcard $(FWDIR)/*.zst), )
-	@zstd -fq --rm tmp/*.bin
-endif
-ifneq ($(wildcard $(FWDIR)/*.xz), )
-	@xz -f -C crc32 tmp/*.bin
-endif
-ifneq ($(wildcard $(FWDIR)/*.gz), )
-	@gzip -f tmp/*.bin
-endif
-	@install -vDm 644 -t $(FWDIR) tmp/*
-	@rm -vrf tmp
-endif
+	@test "$(ALLOW_FIRMWARE_INSTALL)" = "1" || { echo "Refusing firmware installation; set ALLOW_FIRMWARE_INSTALL=1 explicitly."; exit 1; }
+	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
+	@test ! -e "$(FIRMWARE_MANIFEST)" || { echo "Firmware manifest already exists; inspect it before proceeding."; exit 1; }
+	@for f in firmware/*.bin; do \
+		base=$$(basename "$$f"); \
+		for suffix in "" .zst .xz .gz; do \
+			test ! -e "$(FWDIR)/$$base$$suffix" || { echo "Refusing to overwrite existing firmware: $(FWDIR)/$$base$$suffix"; exit 1; }; \
+		done; \
+	done
+	@printf "Type INSTALL MT7902 FIRMWARE to continue: "; read -r answer; test "$$answer" = "INSTALL MT7902 FIRMWARE" || { echo "Confirmation did not match."; exit 1; }
+	@install -vDm 644 -t "$(FWDIR)" firmware/*.bin
+	@install -d -m 755 /var/lib
+	@printf '%s\n' WIFI_MT7902_patch_mcu_1_1_hdr.bin WIFI_RAM_CODE_MT7902_1.bin > "$(FIRMWARE_MANIFEST)"
 
 uninstall:
-	@echo "Unloading module"
-	@rmmod -v $(MODNAME) || true
-	@rm -vrf $(MODDESTDIR)
-	@depmod $(DEPMOD_ARGS)
+	@test "$(ALLOW_SYSTEM_INSTALL)" = "1" || { echo "Refusing system modification; set ALLOW_SYSTEM_INSTALL=1 explicitly."; exit 1; }
+	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
+	@test -f "$(INSTALL_MARKER)" || { echo "No manual-install marker found; refusing to remove untracked module files."; exit 1; }
+	@printf "Type REMOVE MT7902E MODULE FILES to continue: "; read -r answer; test "$$answer" = "REMOVE MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
+	@rm -f "$(MODDESTDIR)/$(MODNAME).ko" "$(MODDESTDIR)/$(MODNAME).ko.gz" "$(MODDESTDIR)/$(MODNAME).ko.xz" "$(MODDESTDIR)/$(MODNAME).ko.zst"
+	@rmdir "$(MODDESTDIR)" 2>/dev/null || true
+	@rm -f "$(INSTALL_MARKER)"
+	@depmod $(DEPMOD_ARGS) -a $(KVER)
+	@echo "Installed module files removed. No module was unloaded; the running driver is unchanged until a later activation/reboot."
 
 uninstall_fw:
-	@rm -vrf $(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.*
-	@rm -vrf $(FWDIR)/WIFI_RAM_CODE_MT7902_1.bin.*
+	@test "$(ALLOW_FIRMWARE_REMOVAL)" = "1" || { echo "Refusing firmware removal; set ALLOW_FIRMWARE_REMOVAL=1 explicitly."; exit 1; }
+	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
+	@test -f "$(FIRMWARE_MANIFEST)" || { echo "No firmware manifest found; refusing to remove distribution or untracked firmware."; exit 1; }
+	@printf "Type REMOVE MT7902 FIRMWARE to continue: "; read -r answer; test "$$answer" = "REMOVE MT7902 FIRMWARE" || { echo "Confirmation did not match."; exit 1; }
+	@while IFS= read -r name; do \
+		case "$$name" in \
+			WIFI_MT7902_patch_mcu_1_1_hdr.bin|WIFI_RAM_CODE_MT7902_1.bin) rm -f "$(FWDIR)/$$name" ;; \
+			*) echo "Unexpected firmware manifest entry: $$name"; exit 1 ;; \
+		esac; \
+	done < "$(FIRMWARE_MANIFEST)"
+	@rm -f "$(FIRMWARE_MANIFEST)"
