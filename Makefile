@@ -51,8 +51,8 @@ stage: all
 install: all
 	@test "$(ALLOW_SYSTEM_INSTALL)" = "1" || { echo "Refusing system modification; set ALLOW_SYSTEM_INSTALL=1 explicitly."; exit 1; }
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
-	@test ! -e "$(INSTALL_MARKER)" || { echo "A manual install marker already exists; inspect it before proceeding."; exit 1; }
-	@test -z "$$(find "$(MODDESTDIR)" -maxdepth 1 -type f -name "$(MODNAME).ko*" -print -quit 2>/dev/null)" || { echo "A module already exists in $(MODDESTDIR); refusing to overwrite it."; exit 1; }
+	@test ! -e "$(INSTALL_MARKER)" && test ! -L "$(INSTALL_MARKER)" || { echo "A manual install marker already exists; inspect it before proceeding."; exit 1; }
+	@test -z "$(find "$(MODDESTDIR)" -maxdepth 1 \( -type f -o -type l \) -name "$(MODNAME).ko*" -print -quit 2>/dev/null)" || { echo "A module already exists in $(MODDESTDIR); refusing to overwrite it."; exit 1; }
 	@printf "Type INSTALL MT7902E MODULE FILES to continue: "; read -r answer; test "$$answer" = "INSTALL MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
 	@install -vDm 644 -t "$(MODDESTDIR)" *.ko
 ifeq ($(COMPRESS_GZIP), y)
@@ -77,11 +77,11 @@ endif
 install_fw:
 	@test "$(ALLOW_FIRMWARE_INSTALL)" = "1" || { echo "Refusing firmware installation; set ALLOW_FIRMWARE_INSTALL=1 explicitly."; exit 1; }
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
-	@test ! -e "$(FIRMWARE_MANIFEST)" || { echo "Firmware manifest already exists; inspect it before proceeding."; exit 1; }
+	@test ! -e "$(FIRMWARE_MANIFEST)" && test ! -L "$(FIRMWARE_MANIFEST)" || { echo "Firmware manifest already exists; inspect it before proceeding."; exit 1; }
 	@for f in firmware/*.bin; do \
 		base=$$(basename "$$f"); \
 		for suffix in "" .zst .xz .gz; do \
-			test ! -e "$(FWDIR)/$$base$$suffix" || { echo "Refusing to overwrite existing firmware: $(FWDIR)/$$base$$suffix"; exit 1; }; \
+			if [ -e "$(FWDIR)/$base$suffix" ] || [ -L "$(FWDIR)/$base$suffix" ]; then echo "Refusing to overwrite existing firmware: $(FWDIR)/$base$suffix"; exit 1; fi; \
 		done; \
 	done
 	@printf "Type INSTALL MT7902 FIRMWARE to continue: "; read -r answer; test "$$answer" = "INSTALL MT7902 FIRMWARE" || { echo "Confirmation did not match."; exit 1; }
@@ -94,7 +94,7 @@ install_fw:
 uninstall:
 	@test "$(ALLOW_SYSTEM_INSTALL)" = "1" || { echo "Refusing system modification; set ALLOW_SYSTEM_INSTALL=1 explicitly."; exit 1; }
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
-	@test -f "$(INSTALL_MARKER)" || { echo "No manual-install marker found; refusing to remove untracked module files."; exit 1; }
+	@test -f "$(INSTALL_MARKER)" && test ! -L "$(INSTALL_MARKER)" || { echo "No regular manual-install marker found; refusing to remove untracked module files."; exit 1; }
 	@printf "Type REMOVE MT7902E MODULE FILES to continue: "; read -r answer; test "$$answer" = "REMOVE MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
 	@read -r module_file expected_hash < "$(INSTALL_MARKER)"; \
 		case "$$module_file" in "$(MODNAME).ko"|"$(MODNAME).ko.gz"|"$(MODNAME).ko.xz"|"$(MODNAME).ko.zst") ;; *) echo "Invalid install marker; refusing removal."; exit 1 ;; esac; \
@@ -110,7 +110,7 @@ uninstall:
 uninstall_fw:
 	@test "$(ALLOW_FIRMWARE_REMOVAL)" = "1" || { echo "Refusing firmware removal; set ALLOW_FIRMWARE_REMOVAL=1 explicitly."; exit 1; }
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
-	@test -f "$(FIRMWARE_MANIFEST)" || { echo "No firmware manifest found; refusing to remove distribution or untracked firmware."; exit 1; }
+	@test -f "$(FIRMWARE_MANIFEST)" && test ! -L "$(FIRMWARE_MANIFEST)" || { echo "No regular firmware manifest found; refusing to remove distribution or untracked firmware."; exit 1; }
 	@printf "Type REMOVE MT7902 FIRMWARE to continue: "; read -r answer; test "$$answer" = "REMOVE MT7902 FIRMWARE" || { echo "Confirmation did not match."; exit 1; }
 	@while read -r expected_hash name; do \
 		case "$$name" in \
