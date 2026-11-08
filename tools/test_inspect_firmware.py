@@ -57,7 +57,8 @@ class FirmwareParserTests(unittest.TestCase):
         report = parse_firmware(fixture(payload, region_lengths=(32, 32)))
         self.assertEqual(report["region_count"], 2)
         self.assertEqual(report["region_lengths"], [32, 32])
-\n    def test_parses_common_16_byte_feature_payload(self):
+
+    def test_parses_common_16_byte_feature_payload(self):
         payload = bytes([0x02, 0xC0]) + bytes(14)
         feature = parse_firmware(fixture(payload))["tlvs"][0]
         self.assertTrue(feature["cnm_bit_7"])
@@ -106,7 +107,7 @@ class FirmwareParserTests(unittest.TestCase):
 
     def test_rejects_feature_payload_shorter_than_common_structure(self):
         with self.assertRaises(FirmwareFormatError):
-            parse_firmware(fixture(b"\\x80\\x00"))
+            parse_firmware(fixture(b"\x80\x00"))
 
     def test_rejects_missing_feature_tlv(self):
         unknown = struct.pack("<HBB", 3, 0, 1) + b"abc"
@@ -121,7 +122,7 @@ class FirmwareParserTests(unittest.TestCase):
 
     def test_rejects_truncated_tlv_header(self):
         with self.assertRaises(FirmwareFormatError):
-            parse_firmware(fixture(None, extra_tlvs=(b"\\x01\\x00",)))
+            parse_firmware(fixture(None, extra_tlvs=(b"\x01\x00",)))
 
     def test_rejects_tlv_padding_past_outer_boundary(self):
         payload = bytes([0x02, 0xC0]) + bytes(14)
