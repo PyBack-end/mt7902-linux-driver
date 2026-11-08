@@ -721,7 +721,7 @@ mt792x_get_offload_capability(struct device *dev, const char *fw_wm)
 	struct mt792x_realease_info *rel_info;
 	const struct firmware *fw;
 	const u8 *data, *end;
-	size_t offset = 0, region_offset;
+	size_t offset = 0, region_offset, remaining;
 	int ret, i;
 	u8 offload_caps = 0;
 
@@ -762,26 +762,30 @@ mt792x_get_offload_capability(struct device *dev, const char *fw_wm)
 
 	data = fw->data + offset + 16;
 	end = fw->data + region_offset;
-	if (end - data < sizeof(*rel_info))
+	remaining = end - data;
+	if (remaining < sizeof(*rel_info))
 		goto invalid;
 
 	rel_info = (struct mt792x_realease_info *)data;
 	data += sizeof(*rel_info);
-	if (le16_to_cpu(rel_info->len) > end - data)
+	remaining = end - data;
+	if (le16_to_cpu(rel_info->len) > remaining)
 		goto invalid;
 
 	end = data + le16_to_cpu(rel_info->len);
 	while (data < end) {
 		size_t tlv_len;
 
-		if (end - data < sizeof(*rel_info))
+		remaining = end - data;
+		if (remaining < sizeof(*rel_info))
 			goto invalid;
 
 		rel_info = (struct mt792x_realease_info *)data;
 		data += sizeof(*rel_info);
 		tlv_len = le16_to_cpu(rel_info->len);
-		if (tlv_len > end - data ||
-		    rel_info->pad_len > end - data - tlv_len)
+		remaining = end - data;
+		if (tlv_len > remaining ||
+		    rel_info->pad_len > remaining - tlv_len)
 			goto invalid;
 
 		if (rel_info->tag == MT792x_FW_TAG_FEATURE) {
