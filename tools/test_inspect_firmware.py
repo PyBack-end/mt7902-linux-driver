@@ -57,7 +57,7 @@ class FirmwareParserTests(unittest.TestCase):
     def test_rejects_outer_padding_past_metadata_boundary(self):
         payload = bytes([0x02, 0xC0]) + bytes(14)
         with self.assertRaises(FirmwareFormatError):
-            parse_firmware(fixture(payload, outer_pad=1000, include_outer_padding=False))
+            parse_firmware(fixture(payload, outer_pad=255, include_outer_padding=False))
 
     def test_rejects_tlv_payload_past_outer_boundary(self):
         payload = bytes([0x02, 0xC0]) + bytes(14)
