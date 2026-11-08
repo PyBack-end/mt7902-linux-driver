@@ -95,7 +95,7 @@ class InstallSafetyTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
 
     def test_firmware_install_and_removal_are_separately_guarded(self):
-        firmware_recipe = MAKEFILE.split("\\ninstall_fw:", 1)[1].split("\\nuninstall:", 1)[0]
+        firmware_recipe = MAKEFILE.split("\ninstall_fw:", 1)[1].split("\nuninstall:", 1)[0]
         self.assertIn('tools/check_module_install_conflict.sh', firmware_recipe)
         self.assertIn('ALLOW_FIRMWARE_INSTALL', MAKEFILE)
         self.assertIn('ALLOW_FIRMWARE_REMOVAL', MAKEFILE)
