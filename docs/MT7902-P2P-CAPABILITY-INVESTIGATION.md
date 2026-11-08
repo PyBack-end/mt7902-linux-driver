@@ -10,7 +10,7 @@ when the firmware capability parser does not report CNM.
 
 The original upstream snapshot used for this repository is archived. Before
 using it as a long-term fallback, compare it with the actively maintained
-[ morrownr/mt76 project ](https://github.com/morrownr/mt76), which lists MT7902
+[morrownr/mt76 project](https://github.com/morrownr/mt76), which lists MT7902
 support and newer kernel coverage. This is a candidate for source review, not
 an automatic replacement: P2P/ROC behaviour must still be verified against the
 actual firmware and target hardware.
