@@ -1,0 +1,49 @@
+import struct
+import unittest
+
+from inspect_firmware import FirmwareFormatError, parse_firmware
+
+def fixture(feature_payload: bytes, *, outer_length_delta: int = 0, tlv_length_delta: int = 0) -> bytes:
+    region_data_length = 64
+    metadata_offset = region_data_length + 16
+    tlv = struct.pack("<HBB", len(feature_payload) + tlv_length_delta, 0, 4) + feature_payload
+    outer_payload = tlv
+    outer = struct.pack("<HBB", len(outer_payload) + outer_length_delta, 0, 0) + outer_payload
+    descriptor = bytearray(40)
+    struct.pack_into("<I", descriptor, 20, region_data_length)
+    trailer = struct.pack("<BBBBB2s10s15sI", 0x13, 0, 1, 0, 0, b"\0\0", b"TEST000001", b"20261108120000\0", 0)
+    return bytes(region_data_length) + bytes(16) + outer + bytes(descriptor) + trailer
+
+class FirmwareParserTests(unittest.TestCase):
+    def test_parses_36_byte_mt7902_feature_payload_without_interpreting_extension(self):
+        payload = bytes([0x80, 0x00]) + bytes(14) + bytes.fromhex("ff" * 16 + "ffecffff")
+        report = parse_firmware(fixture(payload))
+        feature = report["tlvs"][0]
+        self.assertEqual(feature["length"], 36)
+        self.assertEqual(feature["segment"], 0x80)
+        self.assertEqual(feature["data"], 0x00)
+        self.assertFalse(feature["cnm_bit_7"])
+        self.assertEqual(len(feature["extension_hex"]), 40)
+
+    def test_parses_common_16_byte_feature_payload(self):
+        payload = bytes([0x02, 0xC0]) + bytes(14)
+        feature = parse_firmware(fixture(payload))["tlvs"][0]
+        self.assertTrue(feature["cnm_bit_7"])
+        self.assertEqual(feature["extension_hex"], "")
+
+    def test_rejects_outer_length_past_metadata_boundary(self):
+        payload = bytes([0x02, 0xC0]) + bytes(14)
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(fixture(payload, outer_length_delta=1000))
+
+    def test_rejects_tlv_payload_past_outer_boundary(self):
+        payload = bytes([0x02, 0xC0]) + bytes(14)
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(fixture(payload, tlv_length_delta=100))
+
+    def test_rejects_truncated_firmware(self):
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(b"short")
+
+if __name__ == "__main__":
+    unittest.main()
