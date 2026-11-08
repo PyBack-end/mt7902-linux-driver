@@ -16,11 +16,6 @@ FEATURE_COMMON_SIZE = 16
 class FirmwareFormatError(ValueError):
     pass
 
-def u16(data: bytes, offset: int) -> int:
-    if offset < 0 or offset + 2 > len(data):
-        raise FirmwareFormatError("truncated 16-bit field")
-    return struct.unpack_from("<H", data, offset)[0]
-
 def parse_firmware(data: bytes) -> dict[str, object]:
     if len(data) < TRAILER_SIZE:
         raise FirmwareFormatError("firmware is shorter than its trailer")
