@@ -1,7 +1,7 @@
 import struct
 import unittest
 
-from inspect_firmware import FirmwareFormatError, parse_firmware
+from inspect_firmware import FirmwareFormatError, TRAILER_SIZE, parse_firmware
 
 
 def fixture(
