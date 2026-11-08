@@ -64,6 +64,26 @@ class FirmwareParserTests(unittest.TestCase):
         with self.assertRaises(FirmwareFormatError):
             parse_firmware(fixture(payload, tlv_length_delta=100))
 
+    def test_rejects_zero_region_count(self):
+        data = bytearray(fixture(bytes([0x02, 0xC0]) + bytes(14)))
+        data[-TRAILER_SIZE + 2] = 0
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(bytes(data))
+
+    def test_rejects_region_descriptor_table_outside_firmware(self):
+        data = bytearray(36)
+        data[-36 + 2] = 255
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(bytes(data))
+
+    def test_rejects_region_data_overlapping_metadata(self):
+        data = bytearray(fixture(bytes([0x02, 0xC0]) + bytes(14)))
+        trailer_offset = len(data) - 36
+        region_offset = trailer_offset - 40
+        struct.pack_into("<I", data, region_offset + 20, region_offset)
+        with self.assertRaises(FirmwareFormatError):
+            parse_firmware(bytes(data))
+
     def test_rejects_truncated_firmware(self):
         with self.assertRaises(FirmwareFormatError):
             parse_firmware(b"short")
