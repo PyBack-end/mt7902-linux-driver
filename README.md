@@ -68,7 +68,11 @@ sudo make install_fw ALLOW_FIRMWARE_INSTALL=1
 
 Firmware removal is also separate and only removes unchanged files recorded in
 the installation manifest. It requires `ALLOW_FIRMWARE_REMOVAL=1` and the
-confirmation phrase `REMOVE MT7902 FIRMWARE`.
+confirmation phrase `REMOVE MT7902 FIRMWARE`:
+
+```bash
+sudo make uninstall_fw ALLOW_FIRMWARE_REMOVAL=1
+```
 
 > [!TIP]
 > As per the [20260309](https://gitlab.com/kernel-firmware/linux-firmware#linux-firmware) release, the firmware should be already provided by your distribution, for Debian as of present, check in the unstable repo.
