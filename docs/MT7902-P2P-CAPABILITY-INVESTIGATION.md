@@ -18,6 +18,21 @@ modprobe configuration that blacklists several in-kernel mt76 modules, so it
 must not be invoked as a Turyen per-device fallback without redesigning that
 installation policy.
 
+## Firmware specimen fingerprint
+
+The inspected RAM firmware specimen is `firmware/WIFI_RAM_CODE_MT7902_1.bin`:
+
+- Size: 716,944 bytes
+- SHA-256: `b5958ac72c71fb8405e080f52d378d02b484812b9f1010c8843727056bbfc998`
+- Firmware build date: `20251212032127`
+- Chip ID: `0x13`; region count: 4
+- Feature TLV: tag 4, length 36, segment `0x80`, data `0x00`
+- CNM bit (`BIT(7)` of the data byte): clear
+
+The user's installed firmware was previously reported to match this fingerprint.
+The inspector output should be retained with future hardware acceptance evidence
+so that capability conclusions remain tied to an exact firmware image.
+
 ## Confirmed source-level behaviour
 
 - The shared MT792x firmware feature structure is 16 bytes: segment, data, and
