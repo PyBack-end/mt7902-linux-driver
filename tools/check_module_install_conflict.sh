@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-if [ "$#" -ne 2 ]; then
-	echo "usage: check_module_install_conflict.sh KVER MODNAME" >&2
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
+	echo "usage: check_module_install_conflict.sh KVER MODNAME [MODULE_ROOT]" >&2
 	exit 2
 fi
 
@@ -16,7 +16,7 @@ case "$module_name" in
 	""|*[!A-Za-z0-9_-]*) echo "invalid module name" >&2; exit 2 ;;
 esac
 
-module_root="/lib/modules/$kernel_version"
+module_root="${3:-/lib/modules/$kernel_version}"
 if [ ! -d "$module_root" ]; then
 	echo "kernel module directory does not exist: $module_root" >&2
 	exit 1
