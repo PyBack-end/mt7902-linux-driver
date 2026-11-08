@@ -73,12 +73,6 @@ confirmation phrase `REMOVE MT7902 FIRMWARE`.
 > [!TIP]
 > As per the [20260309](https://gitlab.com/kernel-firmware/linux-firmware#linux-firmware) release, the firmware should be already provided by your distribution, for Debian as of present, check in the unstable repo.
 
-- To install the firmware required for the driver:
-
-```bash
-sudo make install_fw
-```
-
 - To remove module files installed by this Makefile (the running module is
   never unloaded):
 
@@ -91,7 +85,9 @@ the recorded SHA-256 before deleting the exact installed module file. It does
 not unload the active driver; a reboot or separately authorized transition is
 still required.
 
-Once you got the driver & firmware installed, reboot to see changes.
+The installed module files are not activated immediately. Plan any reboot or
+module transition separately, with an alternate network path and a recovery
+plan available.
 
 ## Feedback
 
