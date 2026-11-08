@@ -29,6 +29,26 @@ when the firmware capability parser does not report CNM.
    could be interpreted to indicate support.
 4. The lack of CNM may be intentional firmware policy rather than a parser bug.
 
+## Firmware inspection tooling
+
+`tools/inspect_firmware.py` reads a firmware image and validates the trailer,
+region descriptor bounds, outer release-info block and nested TLV boundaries.
+It reports the common 16-byte feature structure and preserves any bytes beyond
+that structure as uninterpreted hexadecimal data. It deliberately does not
+assign semantics to the MT7902-specific 20-byte extension.
+
+Run its regression tests with:
+
+```bash
+python3 -m unittest discover -s tools -p 'test_*.py' -v
+```
+
+Inspect a firmware image with:
+
+```bash
+python3 tools/inspect_firmware.py firmware/WIFI_RAM_CODE_MT7902_1.bin
+```
+
 ## Required evidence before changing runtime capability behaviour
 
 - Identify the meaning of all 36 bytes in the MT7902 feature TLV.
