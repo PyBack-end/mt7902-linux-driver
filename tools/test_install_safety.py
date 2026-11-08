@@ -30,7 +30,7 @@ class InstallSafetyTests(unittest.TestCase):
     def test_conflict_preflight_rejects_in_tree_mt7921e_pci_alias(self):
         with tempfile.TemporaryDirectory() as root:
             (Path(root) / "modules.alias").write_text(
-                "alias pci:v000014C3d00007902sv*sd*bc*sc*i* mt7921e\\n"
+                "alias pci:v000014C3d00007902sv*sd*bc*sc*i* mt7921e\n"
             )
             result = subprocess.run(
                 ["sh", str(CONFLICT_CHECK), "7.0.0-vendor", "mt7902e", root],
