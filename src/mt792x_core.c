@@ -737,7 +737,7 @@ mt792x_get_offload_capability(struct device *dev, const char *fw_wm)
 	}
 
 	hdr = (const void *)(fw->data + fw->size - sizeof(*hdr));
-	if (hdr->n_region >
+	if (!hdr->n_region || hdr->n_region >
 	    (fw->size - sizeof(*hdr)) / sizeof(struct mt76_connac2_fw_region))
 		goto invalid;
 
@@ -769,7 +769,8 @@ mt792x_get_offload_capability(struct device *dev, const char *fw_wm)
 	rel_info = (struct mt792x_realease_info *)data;
 	data += sizeof(*rel_info);
 	remaining = end - data;
-	if (le16_to_cpu(rel_info->len) > remaining)
+	if (le16_to_cpu(rel_info->len) > remaining ||
+	    rel_info->pad_len > remaining - le16_to_cpu(rel_info->len))
 		goto invalid;
 
 	end = data + le16_to_cpu(rel_info->len);
