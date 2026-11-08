@@ -1,0 +1,37 @@
+name: MT7902 install safety
+
+on:
+  pull_request:
+    paths:
+      - "Makefile"
+      - "tools/check_module_install_conflict.sh"
+      - "tools/test_install_safety.py"
+      - ".github/workflows/install-safety.yml"
+  push:
+    branches:
+      - backport
+      - "integration/**"
+      - "safety/**"
+    paths:
+      - "Makefile"
+      - "tools/check_module_install_conflict.sh"
+      - "tools/test_install_safety.py"
+      - ".github/workflows/install-safety.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  install-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate shell syntax
+        run: sh -n tools/check_module_install_conflict.sh
+      - name: Run installation safety tests
+        run: python -m unittest discover -s tools -p "test_install_safety.py" -v
