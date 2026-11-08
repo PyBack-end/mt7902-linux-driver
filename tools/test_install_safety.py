@@ -15,6 +15,14 @@ class InstallSafetyTests(unittest.TestCase):
         self.assertIn('INSTALL MT7902E MODULE FILES', MAKEFILE)
         self.assertIn('/updates/dkms', MAKEFILE)
 
+    def test_module_install_authorizes_before_building(self):
+        self.assertNotIn("install: all", MAKEFILE)
+        install_recipe = MAKEFILE.split("\ninstall:", 1)[1].split("\ninstall_fw:", 1)[0]
+        self.assertLess(
+            install_recipe.index("Confirmation did not match."),
+            install_recipe.index("$(MAKE) all"),
+        )
+
     def test_module_install_uses_conflict_preflight(self):
         self.assertIn('tools/check_module_install_conflict.sh', MAKEFILE)
         self.assertTrue(CONFLICT_CHECK.is_file())
@@ -22,10 +30,43 @@ class InstallSafetyTests(unittest.TestCase):
     def test_conflict_preflight_accepts_empty_module_tree(self):
         with tempfile.TemporaryDirectory() as root:
             result = subprocess.run(
-                ["sh", str(CONFLICT_CHECK), "test-kernel", "mt7902e", root],
+                ["sh", str(CONFLICT_CHECK), "7.0.0-test", "mt7902e", root],
                 capture_output=True, text=True, check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_conflict_preflight_rejects_in_tree_mt7921e_pci_alias(self):
+        with tempfile.TemporaryDirectory() as root:
+            (Path(root) / "modules.alias").write_text(
+                "alias pci:v000014C3d00007902sv*sd*bc*sc*i* mt7921e\n"
+            )
+            result = subprocess.run(
+                ["sh", str(CONFLICT_CHECK), "7.0.0-vendor", "mt7902e", root],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("already has an MT7902 PCI alias", result.stderr)
+
+    def test_conflict_preflight_rejects_builtin_mt7921e_alias(self):
+        with tempfile.TemporaryDirectory() as root:
+            (Path(root) / "modules.builtin.modinfo").write_text(
+                "kernel/drivers/net/wireless/mediatek/mt76/mt7921/mt7921e.ko:alias=pci:v000014C3d00007902sv*sd*bc*sc*i*\n"
+            )
+            result = subprocess.run(
+                ["sh", str(CONFLICT_CHECK), "7.0.0-vendor", "mt7902e", root],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("built-in MT7902 support", result.stderr)
+
+    def test_conflict_preflight_refuses_mainline_supported_kernels(self):
+        with tempfile.TemporaryDirectory() as root:
+            result = subprocess.run(
+                ["sh", str(CONFLICT_CHECK), "7.1.0-generic", "mt7902e", root],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("upstream MT7902 support", result.stderr)
 
     def test_conflict_preflight_rejects_existing_module_variants(self):
         for suffix in (".ko", ".ko.gz", ".ko.xz", ".ko.zst"):
@@ -34,7 +75,7 @@ class InstallSafetyTests(unittest.TestCase):
                 module.parent.mkdir(parents=True)
                 module.write_bytes(b"existing module")
                 result = subprocess.run(
-                    ["sh", str(CONFLICT_CHECK), "test-kernel", "mt7902e", root],
+                    ["sh", str(CONFLICT_CHECK), "7.0.0-test", "mt7902e", root],
                     capture_output=True, text=True, check=False,
                 )
                 self.assertNotEqual(result.returncode, 0)
@@ -48,12 +89,14 @@ class InstallSafetyTests(unittest.TestCase):
             target.write_bytes(b"existing module")
             module.symlink_to(target)
             result = subprocess.run(
-                ["sh", str(CONFLICT_CHECK), "test-kernel", "mt7902e", root],
+                ["sh", str(CONFLICT_CHECK), "7.0.0-test", "mt7902e", root],
                 capture_output=True, text=True, check=False,
             )
             self.assertNotEqual(result.returncode, 0)
 
     def test_firmware_install_and_removal_are_separately_guarded(self):
+        firmware_recipe = MAKEFILE.split("\ninstall_fw:", 1)[1].split("\nuninstall:", 1)[0]
+        self.assertIn('tools/check_module_install_conflict.sh', firmware_recipe)
         self.assertIn('ALLOW_FIRMWARE_INSTALL', MAKEFILE)
         self.assertIn('ALLOW_FIRMWARE_REMOVAL', MAKEFILE)
         self.assertIn('INSTALL MT7902 FIRMWARE', MAKEFILE)

@@ -46,12 +46,13 @@ stage: all
 
 # Manual module-file installation is deliberately separate from module
 # activation. It never unloads, reloads, or modprobes the running driver.
-install: all
+install:
 	@test "$(ALLOW_SYSTEM_INSTALL)" = "1" || { echo "Refusing system modification; set ALLOW_SYSTEM_INSTALL=1 explicitly."; exit 1; }
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
 	@test ! -e "$(INSTALL_MARKER)" && test ! -L "$(INSTALL_MARKER)" || { echo "A manual install marker already exists; inspect it before proceeding."; exit 1; }
 	@sh tools/check_module_install_conflict.sh "$(KVER)" "$(MODNAME)"
-	@printf "Type INSTALL MT7902E MODULE FILES to continue: "; read -r answer; test "$$answer" = "INSTALL MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
+	@printf "Type INSTALL MT7902E MODULE FILES to continue: "; read -r answer; test "$answer" = "INSTALL MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
+	$(MAKE) all
 	@install -vDm 644 -t "$(MODDESTDIR)" *.ko
 ifeq ($(COMPRESS_GZIP), y)
 	@gzip -f "$(MODDESTDIR)"/*.ko
@@ -76,6 +77,7 @@ install_fw:
 	@test "$(ALLOW_FIRMWARE_INSTALL)" = "1" || { echo "Refusing firmware installation; set ALLOW_FIRMWARE_INSTALL=1 explicitly."; exit 1; }
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
 	@test ! -e "$(FIRMWARE_MANIFEST)" && test ! -L "$(FIRMWARE_MANIFEST)" || { echo "Firmware manifest already exists; inspect it before proceeding."; exit 1; }
+	@sh tools/check_module_install_conflict.sh "$(KVER)" "$(MODNAME)"
 	@test ! -e "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin" && test ! -L "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin" && \
 		test ! -e "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.zst" && test ! -L "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.zst" && \
 		test ! -e "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.xz" && test ! -L "$(FWDIR)/WIFI_MT7902_patch_mcu_1_1_hdr.bin.xz" && \

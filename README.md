@@ -53,8 +53,10 @@ make stage KVER="$(uname -r)" KSRC="/lib/modules/$(uname -r)/build"
 sudo make install ALLOW_SYSTEM_INSTALL=1 KVER="$(uname -r)" KSRC="/lib/modules/$(uname -r)/build"
 ```
 
-The confirmation phrase is `INSTALL MT7902E MODULE FILES`. The module remains
-inactive until a separate activation/reboot decision. No `modprobe`,
+The confirmation phrase is `INSTALL MT7902E MODULE FILES`. The preflight also
+refuses installation on Linux 7.1 and newer, where MT7902 is supported by the
+in-tree `mt7921e` driver. The module remains inactive until a separate
+activation/reboot decision. No `modprobe`,
 `rmmod`, module unload, or reload is performed by this target.
 
 - Firmware installation is separate, requires
