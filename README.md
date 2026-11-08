@@ -37,34 +37,61 @@ cd mt7902
 make -j$(nproc)
 ```
 
-- To build the driver & install it:
+- To stage the module and firmware into a reviewable package tree without
+  changing the host:
 
 ```bash
-sudo make install -j$(nproc)
+make stage KVER="$(uname -r)" KSRC="/lib/modules/$(uname -r)/build"
+```
+
+- Manual module-file installation is guarded and does not activate or reload
+  the running driver. It installs only into `updates/dkms`, refuses to
+  shadow or replace any existing module for the selected kernel, and requires both an explicit make
+  variable and an interactive confirmation:
+
+```bash
+sudo make install ALLOW_SYSTEM_INSTALL=1 KVER="$(uname -r)" KSRC="/lib/modules/$(uname -r)/build"
+```
+
+The confirmation phrase is `INSTALL MT7902E MODULE FILES`. The module remains
+inactive until a separate activation/reboot decision. No `modprobe`,
+`rmmod`, module unload, or reload is performed by this target.
+
+- Firmware installation is separate, requires
+  `ALLOW_FIRMWARE_INSTALL=1` and confirmation phrase
+  `INSTALL MT7902 FIRMWARE`, and refuses to overwrite an existing firmware
+  file or compressed variant:
+
+```bash
+sudo make install_fw ALLOW_FIRMWARE_INSTALL=1
+```
+
+Firmware removal is also separate and only removes unchanged files recorded in
+the installation manifest. It requires `ALLOW_FIRMWARE_REMOVAL=1` and the
+confirmation phrase `REMOVE MT7902 FIRMWARE`:
+
+```bash
+sudo make uninstall_fw ALLOW_FIRMWARE_REMOVAL=1
 ```
 
 > [!TIP]
 > As per the [20260309](https://gitlab.com/kernel-firmware/linux-firmware#linux-firmware) release, the firmware should be already provided by your distribution, for Debian as of present, check in the unstable repo.
 
-- To install the firmware required for the driver:
+- To remove module files installed by this Makefile (the running module is
+  never unloaded):
 
 ```bash
-sudo make install_fw
+sudo make uninstall ALLOW_SYSTEM_INSTALL=1
 ```
 
-- To remove the driver:
+The confirmation phrase is `REMOVE MT7902E MODULE FILES`. Removal verifies
+the recorded SHA-256 before deleting the exact installed module file. It does
+not unload the active driver; a reboot or separately authorized transition is
+still required.
 
-```bash
-sudo make uninstall
-```
-
-- To remove the firmware:
-
-```bash
-sudo make uninstall_fw
-```
-
-Once you got the driver & firmware installed, reboot to see changes.
+The installed module files are not activated immediately. Plan any reboot or
+module transition separately, with an alternate network path and a recovery
+plan available.
 
 ## Feedback
 
