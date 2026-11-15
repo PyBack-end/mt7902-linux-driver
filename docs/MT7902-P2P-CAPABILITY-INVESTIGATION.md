@@ -123,3 +123,9 @@ reviewed and merged independently of capability-behaviour changes.
 5. Integration: Turyen forms a group and transfers authenticated data.
 
 Passing a lower level does not imply passing a higher one.
+
+## Additive same-channel P2P advertisement (2026-11-15)
+
+The basic (non-CNM) interface combination table was extended so that a single-channel STA can coexist with one P2P-GO / P2P-client / P2P-device. This does **not** set `MT792x_FW_CAP_CNM`, does not enable remain-on-channel, and does not change multi-channel behaviour. The change is purely additive to the advertised combinations so that `iw phy … interface add … type p2p-go` is no longer rejected by mac80211 when the firmware does not report CNM.
+
+Existing STA connectivity is unchanged. Activation still requires a separate module load/reboot decision; the Makefile install targets do not unload the running driver.
