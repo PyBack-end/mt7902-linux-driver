@@ -27,8 +27,6 @@ minor=${version_rest%%.*}
 case "$major:$minor" in
 	*[!0-9:]*|:*) echo "invalid kernel version" >&2; exit 2 ;;
 esac
-
-# 7.1+ has upstream support; 7.0 is allowed for this test
 if [ "$major" -gt 7 ] || { [ "$major" -eq 7 ] && [ "$minor" -ge 1 ]; }; then
 	echo "Linux $kernel_version has upstream MT7902 support; refusing out-of-tree module installation. Use the in-tree mt7921e driver." >&2
 	exit 1
@@ -40,7 +38,20 @@ if [ ! -d "$module_root" ]; then
 	exit 1
 fi
 
-# Alias and existing-module checks temporarily disabled for the P2P test install.
-# Restore the original file from git after the test if you want the guards back.
+if [ -f "$module_root/modules.alias" ] && grep -Eiq '^alias pci:v000014C3d00007902.*[[:space:]]mt7921e$' "$module_root/modules.alias"; then
+	echo "The selected kernel already has an MT7902 PCI alias in mt7921e; refusing to install a competing driver." >&2
+	exit 1
+fi
+if [ -f "$module_root/modules.builtin.modinfo" ] && grep -Eiq 'mt7921e\.ko:alias=pci:v000014C3d00007902' "$module_root/modules.builtin.modinfo"; then
+	echo "The selected kernel has built-in MT7902 support in mt7921e; refusing to install a competing driver." >&2
+	exit 1
+fi
+
+existing_module="$(find "$module_root" \( -type f -o -type l \) \( -name "$module_name.ko" -o -name "$module_name.ko.gz" -o -name "$module_name.ko.xz" -o -name "$module_name.ko.zst" \) -print -quit 2>/dev/null || true)"
+
+if [ -n "$existing_module" ]; then
+	echo "An existing $module_name module was found at $existing_module; refusing to shadow or replace it." >&2
+	exit 1
+fi
 
 exit 0
