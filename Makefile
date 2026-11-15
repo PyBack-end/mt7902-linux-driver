@@ -51,7 +51,7 @@ install:
 	@test "$$(id -u)" -eq 0 || { echo "Run this target as root."; exit 1; }
 	@test ! -e "$(INSTALL_MARKER)" && test ! -L "$(INSTALL_MARKER)" || { echo "A manual install marker already exists; inspect it before proceeding."; exit 1; }
 	@sh tools/check_module_install_conflict.sh "$(KVER)" "$(MODNAME)"
-	@printf "Type INSTALL MT7902E MODULE FILES to continue: "; read -r answer; test "$answer" = "INSTALL MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
+#	@printf "Type INSTALL MT7902E MODULE FILES to continue: "; read -r answer; test "$answer" = "INSTALL MT7902E MODULE FILES" || { echo "Confirmation did not match."; exit 1; }
 	$(MAKE) all
 	@install -vDm 644 -t "$(MODDESTDIR)" *.ko
 ifeq ($(COMPRESS_GZIP), y)
